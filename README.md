@@ -29,7 +29,7 @@ Ein modernes Trading-Journal, entwickelt mit React, TypeScript und Tailwind CSS,
 
 1. Repository klonen:
 ```bash
-git clone https://github.com/yourusername/trademaster.git
+git clone https://github.com/kililab/trademaster.git
 cd trademaster
 ```
 
@@ -92,7 +92,7 @@ Dieses Projekt ist unter der MIT-Lizenz lizenziert - siehe die [LICENSE](LICENSE
 
 ## 👥 Autoren
 
-- Ihr Name - [@yourusername](https://github.com/yourusername)
+- Ihr Name - [@kililab](https://github.com/kililab)
 
 ## 🙏 Danksagungen
 
