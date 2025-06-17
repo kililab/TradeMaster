@@ -22,6 +22,7 @@ interface TradeEntryProps {
     exitPrice: number;
     quantity: number; // This now represents lotSize
     date: string;
+    time: string; // Added time property
     notes: string;
   }) => void;
 }
@@ -59,8 +60,9 @@ const TradeEntry: React.FC<TradeEntryProps> = ({ onAddTrade }) => {
     direction: 'long',
     entryPrice: '',
     exitPrice: '',
-    quantity: '', // This will now hold lotSize
+    quantity: '',
     date: '',
+    time: '', // Added time state
     notes: '',
   });
   const [calculatedProfit, setCalculatedProfit] = useState<number>(0);
@@ -86,13 +88,13 @@ const TradeEntry: React.FC<TradeEntryProps> = ({ onAddTrade }) => {
   useEffect(() => {
     const entryPrice = parseFloat(trade.entryPrice);
     const exitPrice = parseFloat(trade.exitPrice);
-    const lotSize = parseFloat(trade.quantity); // 'quantity' now represents 'lotSize'
+    const lotSize = parseFloat(trade.quantity);
 
     const instrumentSpec = INSTRUMENT_SPECS[trade.symbol];
 
     if (instrumentSpec && !isNaN(entryPrice) && !isNaN(exitPrice) && !isNaN(lotSize)) {
       const { pipUnitSize, contractSize, quoteCurrency } = instrumentSpec;
-      const usdConversionRate = USD_EXCHANGE_RATES[quoteCurrency] || 1.0; // Standard auf 1.0, falls Währung nicht gefunden
+      const usdConversionRate = USD_EXCHANGE_RATES[quoteCurrency] || 1.0;
 
       // Berechne die rohe Preisdifferenz
       const priceDifferenceRaw = trade.direction === 'long'
@@ -121,7 +123,7 @@ const TradeEntry: React.FC<TradeEntryProps> = ({ onAddTrade }) => {
       ...trade,
       entryPrice: parseFloat(trade.entryPrice),
       exitPrice: parseFloat(trade.exitPrice),
-      quantity: parseFloat(trade.quantity), // Ensure quantity is parsed as float (lotSize)
+      quantity: parseFloat(trade.quantity),
     };
     onAddTrade(newTrade);
     navigate('/trades');
@@ -214,6 +216,17 @@ const TradeEntry: React.FC<TradeEntryProps> = ({ onAddTrade }) => {
                 onChange={handleInputChange}
                 InputLabelProps={{ shrink: true }}
                 required
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Uhrzeit"
+                name="time"
+                type="time"
+                value={trade.time}
+                onChange={handleInputChange}
+                InputLabelProps={{ shrink: true }}
               />
             </Grid>
             <Grid item xs={12}>

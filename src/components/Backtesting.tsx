@@ -38,6 +38,7 @@ interface Trade {
   exitPrice: number;
   quantity: number;
   date: string;
+  time: string;
   notes: string;
   profit: number;
 }
@@ -94,8 +95,12 @@ const Backtesting: React.FC<BacktestingProps> = ({ trades, onEditTrade, onDelete
       filteredTrades = filteredTrades.filter(trade => trade.symbol === selectedSymbol);
     }
 
-    // Sortiere Trades nach Datum
-    filteredTrades.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Sortiere Trades nach Datum und Uhrzeit
+    filteredTrades.sort((a, b) => {
+      const dateA = new Date(`${a.date}T${a.time || '00:00'}`);
+      const dateB = new Date(`${b.date}T${b.time || '00:00'}`);
+      return dateA.getTime() - dateB.getTime();
+    });
 
     // Berechne Statistiken
     const winningTrades = filteredTrades.filter(trade => trade.profit > 0);
@@ -144,9 +149,12 @@ const Backtesting: React.FC<BacktestingProps> = ({ trades, onEditTrade, onDelete
 
     // Gruppiere Trades nach Stunde
     const tradesByHour = filteredTrades.reduce((acc, trade) => {
-      const hour = new Date(trade.date).getHours();
-      const hourKey = `${hour}:00`;
-      acc[hourKey] = (acc[hourKey] || 0) + 1;
+      const hour = trade.time ? parseInt(trade.time.substring(0, 2)) : 0;
+      const hourKey = `${hour.toString().padStart(2, '0')}:00`;
+      if (!acc[hourKey]) {
+        acc[hourKey] = 0;
+      }
+      acc[hourKey] += trade.profit;
       return acc;
     }, {} as Record<string, number>);
 
@@ -359,7 +367,7 @@ const Backtesting: React.FC<BacktestingProps> = ({ trades, onEditTrade, onDelete
           tradesForSelectedDate.map(trade => (
             <Box key={trade.id} sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Typography sx={{ flex: 1 }}>
-                {trade.symbol} | {trade.direction} | {trade.quantity} | €{trade.profit.toFixed(2)}
+                {trade.symbol} | {trade.direction} | {trade.quantity} | {trade.time} | €{trade.profit.toFixed(2)}
               </Typography>
               <IconButton onClick={() => handleEditTrade(trade)}><EditIcon /></IconButton>
               <IconButton onClick={() => handleDeleteTrade(trade.id)}><DeleteIcon /></IconButton>

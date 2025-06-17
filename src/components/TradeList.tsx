@@ -19,6 +19,7 @@ interface Trade {
   exitPrice: number;
   quantity: number;
   date: string;
+  time: string;
   notes: string;
   profit: number;
 }

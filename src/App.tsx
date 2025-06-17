@@ -16,6 +16,7 @@ interface Trade {
   exitPrice: number;
   quantity: number; // This now represents lotSize
   date: string;
+  time: string; // Added time property
   notes: string;
   profit: number;
 }
@@ -71,7 +72,7 @@ function App() {
   }, [trades]);
 
   const handleAddTrade = (newTrade: Omit<Trade, 'id' | 'profit'>) => {
-    const { symbol, direction, entryPrice, exitPrice, quantity } = newTrade;
+    const { symbol, direction, entryPrice, exitPrice, quantity, date, time } = newTrade;
     const lotSize = quantity; // quantity in Omit<Trade> is now lotSize
 
     const instrumentSpec = INSTRUMENT_SPECS[symbol];

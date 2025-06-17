@@ -30,9 +30,36 @@ interface Trade {
   exitPrice: number;
   quantity: number;
   date: string;
+  time: string;
   notes: string;
   profit: number;
 }
+
+// Definitionen für jedes Instrument (aus App.tsx/TradeEntry.tsx kopiert)
+const INSTRUMENT_SPECS: { [key: string]: { pipUnitSize: number; contractSize: number; quoteCurrency: string; } } = {
+  'EUR/USD': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'USD' },
+  'GBP/USD': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'USD' },
+  'USD/JPY': { pipUnitSize: 0.01, contractSize: 100000, quoteCurrency: 'JPY' },
+  'USD/CHF': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'CHF' },
+  'AUD/USD': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'USD' },
+  'USD/CAD': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'CAD' },
+  'NZD/USD': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'USD' },
+  'EUR/GBP': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'GBP' },
+  'EUR/JPY': { pipUnitSize: 0.01, contractSize: 100000, quoteCurrency: 'JPY' },
+  'GBP/JPY': { pipUnitSize: 0.01, contractSize: 100000, quoteCurrency: 'JPY' },
+  'XAU/USD': { pipUnitSize: 0.01, contractSize: 100, quoteCurrency: 'USD' },
+  'BTC/USD': { pipUnitSize: 1, contractSize: 1, quoteCurrency: 'USD' },
+};
+
+// Beispiel Umrechnungskurse zu USD (aus App.tsx/TradeEntry.tsx kopiert)
+const USD_EXCHANGE_RATES: { [key: string]: number } = {
+  'USD': 1.0,
+  'JPY': 1 / 144.88948,
+  'CHF': 1.10,
+  'CAD': 0.73,
+  'GBP': 1.27,
+  'EUR': 1.08,
+};
 
 interface DashboardProps {
   trades: Trade[];
@@ -143,6 +170,21 @@ const Dashboard: React.FC<DashboardProps> = ({ trades, onEditTrade, onDeleteTrad
     return acc;
   }, Array(7).fill(0)).map((profit, idx) => ({ weekday: weekdayNames[idx], profit }));
 
+  // Performance by Hour
+  const tradesByHour = trades.reduce((acc, trade) => {
+    if (trade.time) {
+      const hour = parseInt(trade.time.substring(0, 2));
+      const hourKey = `${hour.toString().padStart(2, '0')}:00`;
+      if (!acc[hourKey]) {
+        acc[hourKey] = 0;
+      }
+      acc[hourKey] += trade.profit;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  const hourlyData = Object.entries(tradesByHour).sort(([hourA], [hourB]) => parseInt(hourA) - parseInt(hourB)).map(([hour, profit]) => ({ hour, profit }));
+
   // Equity Graph
   let equity = 0;
   const equityData = trades
@@ -151,6 +193,15 @@ const Dashboard: React.FC<DashboardProps> = ({ trades, onEditTrade, onDeleteTrad
       equity += t.profit;
       return { trade: idx + 1, equity };
     });
+
+  // Zusätzliche Kennzahlen für R-Multiple
+  const totalWinningProfit = winTrades.reduce((sum, t) => sum + t.profit, 0);
+  const totalLosingProfit = loseTrades.reduce((sum, t) => sum + Math.abs(t.profit), 0);
+
+  const averageWin = winTrades.length > 0 ? totalWinningProfit / winTrades.length : 0;
+  const averageLoss = loseTrades.length > 0 ? totalLosingProfit / loseTrades.length : 0;
+
+  const riskRewardRatio = averageLoss > 0 ? (averageWin / averageLoss).toFixed(2) : 'N/A';
 
   // Trades für ausgewähltes Datum
   const tradesForSelectedDate = selectedDate
@@ -176,16 +227,31 @@ const Dashboard: React.FC<DashboardProps> = ({ trades, onEditTrade, onDeleteTrad
   // Handler für Trade speichern
   const handleSaveTrade = () => {
     if (editTrade) {
-      // Stelle sicher, dass Zahlen korrekt geparst werden
+      const { symbol, direction, entryPrice, exitPrice, quantity } = editTrade;
+      const lotSize = quantity;
+
+      const instrumentSpec = INSTRUMENT_SPECS[symbol];
+
+      let profit = 0;
+      if (instrumentSpec) {
+        const { pipUnitSize, contractSize, quoteCurrency } = instrumentSpec;
+        const usdConversionRate = USD_EXCHANGE_RATES[quoteCurrency] || 1.0;
+
+        const priceDifferenceRaw = direction === 'long'
+          ? (exitPrice - entryPrice)
+          : (entryPrice - exitPrice);
+
+        const pipsProfit = priceDifferenceRaw / pipUnitSize;
+
+        profit = pipsProfit * contractSize * pipUnitSize * usdConversionRate * lotSize;
+      }
+
       const updatedTrade: Trade = {
         ...editTrade,
         entryPrice: parseFloat(editTrade.entryPrice.toString()),
         exitPrice: parseFloat(editTrade.exitPrice.toString()),
-        quantity: parseInt(editTrade.quantity.toString()),
-        // Profit neu berechnen, falls Preise oder Menge geändert wurden
-        profit: editTrade.direction === 'long'
-          ? (parseFloat(editTrade.exitPrice.toString()) - parseFloat(editTrade.entryPrice.toString())) * parseInt(editTrade.quantity.toString())
-          : (parseFloat(editTrade.entryPrice.toString()) - parseFloat(editTrade.exitPrice.toString())) * parseInt(editTrade.quantity.toString()),
+        quantity: parseFloat(editTrade.quantity.toString()),
+        profit: profit,
       };
       onEditTrade(updatedTrade);
     }
@@ -242,8 +308,8 @@ const Dashboard: React.FC<DashboardProps> = ({ trades, onEditTrade, onDeleteTrad
               ? 'success.light'
               : data.profit < 0
               ? 'error.light'
-              : 'grey.800'
-            : 'grey.900',
+              : 'grey.800' // Darker grey for zero profit trades
+            : 'grey.900', // Darkest grey for no trades
           borderRadius: 1,
           boxShadow: 1,
           border: isToday ? '2px solid #1976d2' : undefined, // Mark today's date
@@ -351,6 +417,10 @@ const Dashboard: React.FC<DashboardProps> = ({ trades, onEditTrade, onDeleteTrad
               <Typography variant="body2">Fees</Typography>
               <Typography variant="subtitle1">€{fees.toFixed(2)}</Typography>
             </Box>
+            <Box sx={{ mb: 1 }}>
+              <Typography variant="body2">Risk Reward Ratio</Typography>
+              <Typography variant="subtitle1">{riskRewardRatio}</Typography>
+            </Box>
           </Paper>
         </Grid>
       </Grid>
@@ -395,6 +465,36 @@ const Dashboard: React.FC<DashboardProps> = ({ trades, onEditTrade, onDeleteTrad
                 <Legend />
                 <Line type="monotone" dataKey="equity" stroke="#388e3c" dot={false} name="Equity" />
               </LineChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+      </Grid>
+      <Grid container spacing={3} sx={{ mt: 2 }}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>Performance nach Wochentag</Typography>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={weekdayData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="weekday" />
+                <YAxis />
+                <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                <Bar dataKey="profit" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>Performance nach Handelsstunde</Typography>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={hourlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="hour" />
+                <YAxis />
+                <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                <Bar dataKey="profit" fill="#ffc658" />
+              </BarChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
@@ -496,6 +596,17 @@ const Dashboard: React.FC<DashboardProps> = ({ trades, onEditTrade, onDeleteTrad
                   required
                 />
               </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Uhrzeit"
+                  name="time"
+                  type="time"
+                  value={editTrade.time}
+                  onChange={handleEditInputChange}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
               <Grid item xs={12}>
                 <TextField
                   label="Notizen"
@@ -510,7 +621,7 @@ const Dashboard: React.FC<DashboardProps> = ({ trades, onEditTrade, onDeleteTrad
               {/* Profit wird automatisch neu berechnet und nicht direkt bearbeitet */}
               <Grid item xs={12}>
                 <Typography variant="subtitle1" sx={{ mt: 2 }}>
-                  Neuer Profit: €{editTrade.profit ? parseFloat(editTrade.profit.toString()).toFixed(2) : '0.00'}
+                  Neuer Profit: ${editTrade.profit ? parseFloat(editTrade.profit.toString()).toFixed(2) : '0.00'}
                 </Typography>
               </Grid>
             </Grid>
