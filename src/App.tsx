@@ -14,11 +14,37 @@ interface Trade {
   direction: string;
   entryPrice: number;
   exitPrice: number;
-  quantity: number;
+  quantity: number; // This now represents lotSize
   date: string;
   notes: string;
   profit: number;
 }
+
+// Definitionen für jedes Instrument (aus TradeEntry.tsx kopiert)
+const INSTRUMENT_SPECS: { [key: string]: { pipUnitSize: number; contractSize: number; quoteCurrency: string; } } = {
+  'EUR/USD': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'USD' },
+  'GBP/USD': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'USD' },
+  'USD/JPY': { pipUnitSize: 0.01, contractSize: 100000, quoteCurrency: 'JPY' },
+  'USD/CHF': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'CHF' },
+  'AUD/USD': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'USD' },
+  'USD/CAD': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'CAD' },
+  'NZD/USD': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'USD' },
+  'EUR/GBP': { pipUnitSize: 0.0001, contractSize: 100000, quoteCurrency: 'GBP' },
+  'EUR/JPY': { pipUnitSize: 0.01, contractSize: 100000, quoteCurrency: 'JPY' },
+  'GBP/JPY': { pipUnitSize: 0.01, contractSize: 100000, quoteCurrency: 'JPY' },
+  'XAU/USD': { pipUnitSize: 0.01, contractSize: 100, quoteCurrency: 'USD' }, // Gold: 1 Standard Lot = 100 Unzen
+  'BTC/USD': { pipUnitSize: 1, contractSize: 1, quoteCurrency: 'USD' }, // Bitcoin: 1 Standard Lot = 1 BTC
+};
+
+// Beispiel Umrechnungskurse zu USD (aus TradeEntry.tsx kopiert)
+const USD_EXCHANGE_RATES: { [key: string]: number } = {
+  'USD': 1.0,
+  'JPY': 1 / 144.88948, // Beispielwert aus Ihrem Bild
+  'CHF': 1.10, // Beispiel
+  'CAD': 0.73, // Beispiel
+  'GBP': 1.27, // Beispiel
+  'EUR': 1.08, // Beispiel
+};
 
 const theme = createTheme({
   palette: {
@@ -45,9 +71,24 @@ function App() {
   }, [trades]);
 
   const handleAddTrade = (newTrade: Omit<Trade, 'id' | 'profit'>) => {
-    const profit = newTrade.direction === 'long'
-      ? (newTrade.exitPrice - newTrade.entryPrice) * newTrade.quantity
-      : (newTrade.entryPrice - newTrade.exitPrice) * newTrade.quantity;
+    const { symbol, direction, entryPrice, exitPrice, quantity } = newTrade;
+    const lotSize = quantity; // quantity in Omit<Trade> is now lotSize
+
+    const instrumentSpec = INSTRUMENT_SPECS[symbol];
+
+    let profit = 0;
+    if (instrumentSpec) {
+      const { pipUnitSize, contractSize, quoteCurrency } = instrumentSpec;
+      const usdConversionRate = USD_EXCHANGE_RATES[quoteCurrency] || 1.0;
+
+      const priceDifferenceRaw = direction === 'long'
+        ? (exitPrice - entryPrice)
+        : (entryPrice - exitPrice);
+
+      const pipsProfit = priceDifferenceRaw / pipUnitSize;
+
+      profit = pipsProfit * contractSize * pipUnitSize * usdConversionRate * lotSize;
+    }
 
     const tradeWithId: Trade = {
       ...newTrade,
