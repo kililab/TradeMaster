@@ -1,0 +1,16 @@
+# Tradezella Kalender Format
+# Format: YYYY-MM-DD|TRADES|PROFIT|SYMBOLS
+
+# Beispiel:
+# 2024-03-20|3|150.50|AAPL,MSFT,GOOGL
+# 2024-03-21|2|-75.25|TSLA,NVDA
+# 2024-03-22|1|45.00|AAPL
+
+# Erklärung der Felder:
+# 1. Datum (YYYY-MM-DD)
+# 2. Anzahl der Trades an diesem Tag
+# 3. Gesamtgewinn/-verlust des Tages
+# 4. Komma-getrennte Liste der gehandelten Symbole
+
+# Die Daten werden chronologisch sortiert gespeichert
+# Leere Zeilen und Zeilen mit # werden ignoriert 
