@@ -242,28 +242,24 @@ const Dashboard: React.FC<DashboardProps> = ({ trades, onEditTrade, onDeleteTrad
               ? 'success.light'
               : data.profit < 0
               ? 'error.light'
-              : 'grey.200'
-            : 'grey.100',
+              : 'grey.800'
+            : 'grey.900',
           borderRadius: 1,
           boxShadow: 1,
           border: isToday ? '2px solid #1976d2' : undefined, // Mark today's date
           cursor: 'pointer',
-          '&:hover': {
-            opacity: 0.8,
-          },
         }}
       >
-        <Typography variant="body2">{day}</Typography>
+        <Typography variant="body2" sx={{ color: '#ffffff' }}>
+          {day}
+        </Typography>
         {data.count > 0 && (
           <>
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
-              {data.count} Trade{data.count !== 1 ? 's' : ''}
+            <Typography variant="caption" sx={{ color: '#ffffff' }}>
+              {data.count} Trades
             </Typography>
-            <Typography
-              variant="body2"
-              color={data.profit > 0 ? 'success.dark' : data.profit < 0 ? 'error.dark' : 'text.secondary'}
-            >
-              €{data.profit.toFixed(2)}
+            <Typography variant="caption" sx={{ color: data.profit >= 0 ? '#81c784' : '#e57373' }}>
+              ${data.profit.toFixed(2)}
             </Typography>
           </>
         )}
