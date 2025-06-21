@@ -20,6 +20,7 @@ interface Trade {
   quantity: number;
   date: string;
   time: string;
+  stopLoss?: number;
   notes: string;
   profit: number;
 }
@@ -43,6 +44,7 @@ const TradeList: React.FC<TradeListProps> = ({ trades }) => {
               <TableCell>Richtung</TableCell>
               <TableCell align="right">Einstiegspreis</TableCell>
               <TableCell align="right">Ausstiegspreis</TableCell>
+              <TableCell align="right">Stop-Loss</TableCell>
               <TableCell align="right">Menge</TableCell>
               <TableCell align="right">Gewinn/Verlust</TableCell>
             </TableRow>
@@ -55,6 +57,7 @@ const TradeList: React.FC<TradeListProps> = ({ trades }) => {
                 <TableCell>{trade.direction}</TableCell>
                 <TableCell align="right">€{trade.entryPrice.toFixed(2)}</TableCell>
                 <TableCell align="right">€{trade.exitPrice.toFixed(2)}</TableCell>
+                <TableCell align="right">{trade.stopLoss !== undefined ? `€${trade.stopLoss.toFixed(2)}` : '-'}</TableCell>
                 <TableCell align="right">{trade.quantity}</TableCell>
                 <TableCell
                   align="right"

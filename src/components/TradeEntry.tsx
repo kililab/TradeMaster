@@ -23,6 +23,7 @@ interface TradeEntryProps {
     quantity: number; // This now represents lotSize
     date: string;
     time: string; // Added time property
+    stopLoss?: number; // Optionales Stop-Loss-Feld
     notes: string;
   }) => void;
 }
@@ -63,10 +64,12 @@ const TradeEntry: React.FC<TradeEntryProps> = ({ onAddTrade }) => {
     quantity: '',
     date: '',
     time: '', // Added time state
+    stopLoss: '', // Neues Feld für Stop-Loss
     notes: '',
   });
   const [calculatedProfit, setCalculatedProfit] = useState<number>(0);
   const [calculatedPipsProfit, setCalculatedPipsProfit] = useState<number>(0);
+  const [calculatedPossibleLoss, setCalculatedPossibleLoss] = useState<number>(0);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -117,6 +120,28 @@ const TradeEntry: React.FC<TradeEntryProps> = ({ onAddTrade }) => {
     }
   }, [trade.entryPrice, trade.exitPrice, trade.quantity, trade.direction, trade.symbol]);
 
+  // Berechne den möglichen Verlust basierend auf dem Stop-Loss
+  useEffect(() => {
+    const entryPrice = parseFloat(trade.entryPrice);
+    const stopLoss = parseFloat(trade.stopLoss);
+    const lotSize = parseFloat(trade.quantity);
+    const instrumentSpec = INSTRUMENT_SPECS[trade.symbol];
+
+    if (instrumentSpec && !isNaN(entryPrice) && !isNaN(stopLoss) && !isNaN(lotSize)) {
+      const { pipUnitSize, contractSize, quoteCurrency } = instrumentSpec;
+      const usdConversionRate = USD_EXCHANGE_RATES[quoteCurrency] || 1.0;
+      const priceDifferenceRaw = trade.direction === 'long'
+        ? (entryPrice - stopLoss)
+        : (stopLoss - entryPrice);
+      const pipsLoss = priceDifferenceRaw / pipUnitSize;
+      const valuePerPipPerStandardLotInQuoteCurrency = contractSize * pipUnitSize;
+      const possibleLoss = pipsLoss * valuePerPipPerStandardLotInQuoteCurrency * usdConversionRate * lotSize;
+      setCalculatedPossibleLoss(possibleLoss > 0 ? possibleLoss : 0);
+    } else {
+      setCalculatedPossibleLoss(0);
+    }
+  }, [trade.entryPrice, trade.stopLoss, trade.quantity, trade.direction, trade.symbol]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newTrade = {
@@ -124,6 +149,7 @@ const TradeEntry: React.FC<TradeEntryProps> = ({ onAddTrade }) => {
       entryPrice: parseFloat(trade.entryPrice),
       exitPrice: parseFloat(trade.exitPrice),
       quantity: parseFloat(trade.quantity),
+      stopLoss: trade.stopLoss !== '' ? parseFloat(trade.stopLoss) : undefined,
     };
     onAddTrade(newTrade);
     navigate('/trades');
@@ -228,6 +254,23 @@ const TradeEntry: React.FC<TradeEntryProps> = ({ onAddTrade }) => {
                 onChange={handleInputChange}
                 InputLabelProps={{ shrink: true }}
               />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Stop-Loss"
+                name="stopLoss"
+                type="number"
+                value={trade.stopLoss}
+                onChange={handleInputChange}
+                inputProps={{ step: "0.00001" }}
+                helperText="Optional: Stop-Loss-Preis"
+              />
+              {trade.stopLoss && (
+                <Typography variant="body2" color="error.main" sx={{ mt: 1 }}>
+                  Möglicher Verlust: ${calculatedPossibleLoss.toFixed(2)}
+                </Typography>
+              )}
             </Grid>
             <Grid item xs={12}>
               <TextField
